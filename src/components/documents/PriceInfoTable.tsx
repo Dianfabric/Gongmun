@@ -5,6 +5,7 @@ export type OptionMode  = 'PERCENT' | 'AMOUNT'
 
 export interface PriceInfoRow {
   productName: string
+  itemCode?: string        // 원단 번호 (선택)
   spec?: string
   yardPrice: number
   width?: number          // 폭 cm — 헤베 환산용
@@ -138,7 +139,14 @@ export default function PriceInfoTable({
 
             return (
               <tr key={i}>
-                <td style={td}>{r.productName}</td>
+                <td style={td}>
+                  <span>{r.productName}</span>
+                  {r.itemCode && (
+                    <span style={{ fontSize: 10, color: '#888', marginLeft: 6, letterSpacing: 0.5 }}>
+                      {r.itemCode}
+                    </span>
+                  )}
+                </td>
                 <td style={{ ...td, color: '#666', fontSize: 11 }}>{r.spec || '－'}</td>
                 {showHebe && (
                   <td style={{ ...td, textAlign: 'center', color: '#666' }}>{r.width ?? 110}</td>

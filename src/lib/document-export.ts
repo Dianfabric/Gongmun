@@ -13,18 +13,80 @@ async function loadJsPDF() {
   return (mod.jsPDF ?? mod.default) as typeof import('jspdf').jsPDF
 }
 
-/** #document-print-area 를 캔버스로 렌더 */
+/**
+ * #document-print-area 를 캔버스로 렌더
+ *
+ * Tailwind v4 는 oklch() 색상 함수를 사용하는데 html2canvas v1.4 가 이를
+ * 파싱하지 못해 에러가 발생한다. <style>/<link> 패치는 Next.js 환경에서
+ * 신뢰할 수 없으므로, Tailwind CSS 가 전혀 없는 순수 iframe 에 문서 HTML
+ * 만 넣고 캡처하는 방식을 사용한다.
+ * (DocumentLayout / 표 컴포넌트는 100 % 인라인 스타일이라 외부 CSS 없어도 동일하게 렌더링됨)
+ */
 export async function renderCanvas(elementId = 'document-print-area'): Promise<HTMLCanvasElement> {
   const html2canvas = await loadHtml2canvas()
   const el = document.getElementById(elementId)
-  if (!el) throw new Error('print element not found')
-  return html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    width: el.offsetWidth,
-    windowWidth: 900,
+  if (!el) throw new Error('요소를 찾을 수 없습니다: ' + elementId)
+
+  const elWidth  = el.offsetWidth
+  const elHeight = Math.max(el.scrollHeight + 60, 1200)
+
+  /* ── Tailwind CSS 없는 순수 iframe 생성 ── */
+  const iframe = document.createElement('iframe')
+  Object.assign(iframe.style, {
+    position:   'fixed',
+    top:        '0px',
+    left:       `-${elWidth + 200}px`,   // 화면 밖
+    width:      `${elWidth}px`,
+    height:     `${elHeight}px`,
+    border:     'none',
+    visibility: 'hidden',
   })
+  document.body.appendChild(iframe)
+
+  try {
+    const idoc = iframe.contentDocument!
+    idoc.open()
+    idoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${location.origin}">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; background: #fff; }
+    img  { max-width: none !important; }
+    table { border-collapse: collapse; }
+  </style>
+</head>
+<body>${el.outerHTML}</body>
+</html>`)
+    idoc.close()
+
+    /* ── 이미지 로드 완료 대기 ── */
+    await Promise.all(
+      Array.from(idoc.querySelectorAll<HTMLImageElement>('img')).map(img =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r() })
+      )
+    )
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+    const target =
+      idoc.getElementById(elementId) ??
+      (idoc.body.firstElementChild as HTMLElement)
+
+    return await html2canvas(target, {
+      scale:           2,
+      useCORS:         true,
+      allowTaint:      true,
+      backgroundColor: '#ffffff',
+      logging:         false,
+      imageTimeout:    15000,
+    })
+  } finally {
+    document.body.removeChild(iframe)
+  }
 }
 
 export async function downloadPDF(filename: string, elementId = 'document-print-area') {

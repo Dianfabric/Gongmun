@@ -2,6 +2,7 @@
 
 export interface PriceRow {
   productName: string
+  itemCode?: string   // 원단 번호 (선택)
   oldPrice: number
   newPrice: number
   unit?: string
@@ -56,7 +57,14 @@ export default function PriceChangeTable({ rows, direction, effectiveDate }: Pro
           const delta = r.oldPrice > 0 ? ((finalPrice - r.oldPrice) / r.oldPrice) * 100 : 0
           return (
             <tr key={i}>
-              <td style={td}>{r.productName}</td>
+              <td style={td}>
+                <span>{r.productName}</span>
+                {r.itemCode && (
+                  <span style={{ fontSize: 10, color: '#888', marginLeft: 6, letterSpacing: 0.5 }}>
+                    {r.itemCode}
+                  </span>
+                )}
+              </td>
               <td style={{ ...td, textAlign: 'center', color: '#666' }}>{r.unit || '-'}</td>
               <td style={{ ...td, textAlign: 'right', color: '#666' }}>{krw(r.oldPrice)}</td>
               <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: isUp ? '#a01a1a' : '#0a6f3a' }}>{krw(r.newPrice)}</td>

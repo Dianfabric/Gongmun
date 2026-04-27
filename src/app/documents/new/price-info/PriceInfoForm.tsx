@@ -202,13 +202,23 @@ export default function PriceInfoForm() {
 
   const handleDownloadPDF = async () => {
     setDownloading('pdf')
-    try { await downloadPDF(filenameBase) } catch { alert('PDF 생성 실패') }
+    try {
+      await downloadPDF(filenameBase)
+    } catch (e) {
+      console.error('[PDF 생성 실패]', e)
+      alert('PDF 생성 실패\n' + (e instanceof Error ? e.name + ': ' + e.message : String(e)))
+    }
     setDownloading('')
   }
 
   const handleDownloadJPG = async () => {
     setDownloading('jpg')
-    try { await downloadJPG(filenameBase) } catch { alert('JPG 생성 실패') }
+    try {
+      await downloadJPG(filenameBase)
+    } catch (e) {
+      console.error('[JPG 생성 실패]', e)
+      alert('JPG 생성 실패\n' + (e instanceof Error ? e.name + ': ' + e.message : String(e)))
+    }
     setDownloading('')
   }
 
@@ -552,13 +562,20 @@ export default function PriceInfoForm() {
                     const cPrice = convertedPrice(r)
                     return (
                       <div key={i} className="border rounded-lg p-2.5 bg-white">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 mb-2">
                           <input
                             className="text-sm font-medium bg-transparent flex-1 outline-none min-w-0"
                             value={r.productName}
                             onChange={e => updateRow(i, { productName: e.target.value })}
+                            placeholder="품목명"
                           />
-                          <button onClick={() => removeRow(i)} className="text-slate-400 hover:text-rose-500 ml-2">
+                          <input
+                            className="text-xs bg-transparent outline-none border-b border-dashed border-slate-300 w-20 text-center text-slate-500 placeholder:text-slate-300 shrink-0"
+                            value={r.itemCode ?? ''}
+                            onChange={e => updateRow(i, { itemCode: e.target.value || undefined })}
+                            placeholder="품번"
+                          />
+                          <button onClick={() => removeRow(i)} className="text-slate-400 hover:text-rose-500 shrink-0">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -797,6 +814,25 @@ export default function PriceInfoForm() {
                 }}
               />
             </div>
+          </div>
+          {/* 미리보기 하단 버튼 */}
+          <div className="flex gap-2 justify-center mt-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleDownloadJPG} disabled={!!downloading} className="gap-1">
+              <ImageIcon className="w-3.5 h-3.5" />
+              {downloading === 'jpg' ? '생성 중...' : 'JPG'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={!!downloading} className="gap-1">
+              <FileDown className="w-3.5 h-3.5" />
+              {downloading === 'pdf' ? '생성 중...' : 'PDF'}
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1">
+              {savePhase === 'drive'
+                ? <CloudUpload className="w-3.5 h-3.5 animate-pulse" />
+                : <Save className="w-3.5 h-3.5" />}
+              {savePhase === 'db' ? 'DB 저장 중...'
+                : savePhase === 'drive' ? '드라이브 저장 중...'
+                : '발행 및 저장'}
+            </Button>
           </div>
         </div>
       </div>
